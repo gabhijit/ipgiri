@@ -126,8 +126,7 @@ if __name__ == '__main__':
         if type(dump) == PeerIndexTable:
             dumper._peeridx_tbl = dump
         if type(dump) == RIBEntry:
-            dumper._rib_entries.append(dump)
-    for rib_entry in dumper.get_rib_entries():
-        print get_prefix_length_dest_as(rib_entry)
+            #dumper._rib_entries.append(dump)
+            pass
 
     dumper.close()

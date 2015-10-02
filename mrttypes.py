@@ -6,7 +6,7 @@ are supportd.
 from collections import namedtuple
 import struct
 from socket import inet_ntoa
-
+import gc
 
 #BGP Path ATypes
 BGP_ATYPE_ORIGIN = 1
@@ -200,10 +200,10 @@ class RIBEntry(MRTType):
             self._entries.append(attrs)
 
     def get_prefix_length_dest_as(self):
-
         dest_aspath = self._entries[0]['ASPATH']
         dest_as = dest_aspath[-1]
         return self._prefixstr, self._prefixlen, dest_as
+
     def __repr__(self):
         return '\n'.join([str(x) for x in self._entries])
 
@@ -219,4 +219,7 @@ def read_mrt_entry(m, e, o):
         return peeridxtbl
     if m.type == 13 and m.subtype == 2:
         rib_entry = RIBEntry(m, e, o, RIB_ENTRY_IPV4_UCAST)
-        print rib_entry.get_prefix_length_dest_as()
+        #print rib_entry.get_prefix_length_dest_as()
+        # Not sure why explicit gc.collect() below is required
+        gc.collect()
+        return rib_entry
