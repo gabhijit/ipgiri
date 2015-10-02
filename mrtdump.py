@@ -15,12 +15,14 @@ from gzip import GzipFile
 from bz2 import BZ2File
 
 from mrttypes import read_mrt_entry
+from mrttypes import PeerIndexTable, RIBEntry
+
+
 
 MRTHeader = namedtuple('MRTHeader', ['ts', 'type', 'subtype', 'length'])
 MRT_HEADER_LENGTH = 12
 _MRT_HDR_PACKSTR = '>IHHI'
 _KNOWN_MRT_TYPES = (11, 12, 13, 16, 17, 32, 33, 48, 49)
-
 
 class MRTFileNotFoundErr(Exception):
     pass
@@ -31,6 +33,8 @@ class InvalidMRTFileErr(Exception):
 class MRTDumper(object):
     def __init__(self, mrt_file):
         self._file_reader = self._get_file_handle(mrt_file)
+        self._peeridx_tbl = None
+        self._rib_entries = []
 
     def _get_file_handle(self, mrt_file):
         """ Tries to determine the file type of the mrt_file, if it's a valid
@@ -53,7 +57,6 @@ class MRTDumper(object):
 
     def __iter__(self):
         """ Iterator for the class"""
-        print "__iter__ called"
         return self
 
     def next(self):
@@ -68,8 +71,23 @@ class MRTDumper(object):
             raise StopIteration
 
         e = f.read(m.length)
-        entry = read_mrt_entry(m, e)
+        entry = read_mrt_entry(m, e, self)
         return entry
+
+    def get_peer_by_idx(self, idx):
+        """Returns the Peer Info @ idx from the PeerIndexTable.
+            If not found raises IndexError.
+        """
+        return self._peeridx_tbl.get_peer_at_idx(idx)
+
+    def list_rib_entries(self, sort=False, etype=0):
+        """Lists all the RIB Entries in the given file.
+        parameters:
+            sort: If true - prints in lexicographically sorted
+            etype: 0 (prints all)
+                   2 (prints IPV4 Unicast)
+        """
+        pass
 
     def _do_get_file_handle(self, cls, mrt_file):
         """Lower Level file open and error checking"""
@@ -90,12 +108,22 @@ class MRTDumper(object):
         except:
             pass
 
+    def __repr__(self):
+        """ Prints the opened file and our own id"""
+        string = str(self._file_reader)
+        string = string[1:-1]
+        if type(self._file_reader) == BZ2File:
+            string = string + " for file " + self._file_reader.name + "  "
+        return "< MRTDumper for " + string + str(hex(id(self))) + ">"
+
 if __name__ == '__main__':
     #dumper = MRTDumper('updates.20150603.1000')
-    dumper = MRTDumper('rib.20150617.1600.bz2')
+    #dumper = MRTDumper('rib.20150617.1600.bz2')
+    dumper = MRTDumper('rib.20150617.1600')
 
-    print dumper
     for dump in dumper:
-        if dump is not None:
-            print dump
+        if type(dump) == PeerIndexTable:
+            dumper._peeridx_tbl = dump
+        if type(dump) == RIBEntry:
+            dumper._rib_entries.append(dump)
     dumper.close()

@@ -1,0 +1,219 @@
+"""
+An implementation of IPv4 Routing table that does longest prefix match.
+
+Broad scheme is as follows -
+
+There are 4 levels of buckets.
+
+First level is a list of 64K entries for first 16 bits
+Second level is a list of 256 entries for each of the 'third' octet
+Third level is a list of 16 entries for the higher nibble of the last octet
+Final level is a list of 16 entries for the lower nibble of the last octet.
+
+Each Entry looks like following
+ - final (there's a routing prefix corresponding to this entry)
+ - children (empty or a table of entries)
+ - prefix len (Length of the prefix that filled this entry - see below. why
+   this may be needed).
+
+Lookup
+ - First we match 'upper 16 bits with an entry'. If that has got 'final' bit
+   set, we 'remember' match.
+ - If it's got 'children' we index into the child corresponding to third byte
+   If it's got a 'final' flag set we 'update' the match. If no children
+   the current match is the best match. If has children continue looking into
+   next level remembering match
+
+Update
+ Update is a bit tricky. Let's say we've a 12.0.0.0/8 prefix. Now we've to
+mark entries in the first list from 12.0 - 12.255. with this. What if we now
+encounter a 12.1.0.0/16 route? Update the 12.1 entry with the latest info
+leaving others untouched so the table would look like
+
+12.0 -> A (final)
+12.1 -> B (final)
+12.3 -> A (final)
+...
+...
+12.255 -> A (final)
+
+We'd overwrite 12.1 -> A with B, because when we are updating 12.1, we'c check
+the current prefix length (8 for 12.0.0.0/8) with new prefix length
+(16 for 12.1.0.0/16) and update the higher prefix length.
+
+What if the order of prefixes learnt was reversed? ie. We learn about
+12.1.0.0/16 first and later about 12.0.0.0/8
+
+12.1 can be populated as
+
+12.1 -> B (final)
+
+Now when we want to populate 12.0 (a lesser prefix), when we encounter
+12.1 -> B, we'd check for prefix length. Prefix length of the entry is longer
+we'd not overwrite the entry
+"""
+
+from socket import inet_aton
+
+class RouteEntry:
+    def __init__(self, pre_len, final, output_idx):
+        """Prefix Length of this Entry. Whether this entry is final or not and
+        output index for this entry (only valid if this entry is final)."""
+        self.prefix_len = pre_len
+        self.final = final
+        self.output_idx = output_idx
+        self.children = None
+        self.table_idx = -1
+        self.table_level = -1
+
+    def add_childrens(self, entry_table):
+        """ Adds children to a given entry."""
+        self.children = entry_table
+
+    def __repr__(self):
+        s = '%stable_idx:%d,final:%r,output_idx:%s\n' % \
+                ("\t"*self.table_level, self.table_idx,
+                        self.final, self.output_idx)
+        if self.children is None:
+            return s
+        for child in self.children:
+            if child.output_idx != -1:
+                s += repr(child)
+        return s
+
+class RouteTable:
+    def __init__(self):
+        self.table_sizes = [ 1 << 16, 1 << 8, 1 << 4, 1 << 4]
+        self.levels = [16, 24, 28, 32]
+        self.level0_table = []
+        for i in range(self.table_sizes[0]):
+            self.level0_table.append(RouteEntry(0,0,-1))
+
+    def lookup(self, ip_address):
+        """ Looks up an IP address and returns an output Index"""
+        match = None
+
+    def add(self, prefix, length, dest_idx):
+        """ Adds a prefix to routing table."""
+        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+
+        level = 0
+        while level < len(self.levels):
+            idx_base, span = self._idx_from_tuple(prefix_arr,
+                                                    length, level)
+
+            lvl_prelen = self.levels[level]
+            tblsz = self.table_sizes[level]
+            nxtsz = self.table_sizes[level+1] if level < 3 else 0
+            i = 0
+            while i < span:
+                if level == 0:
+                    tbl = self.level0_table
+                else:
+                    pass # we expect tbl to be set in level 0
+
+                assert tbl is not None
+                entry = tbl[idx_base+i]
+                if entry.output_idx == -1:
+                    assert entry.children is None
+                    entry.prefix_len = length
+                    entry.output_idx = dest_idx
+                    entry.table_idx = idx_base + i
+                    entry.table_level = level
+                    if length <= lvl_prelen:
+                        entry.final = True
+                        entry.children = None
+                    else:
+                        entry.final = False
+                        entry.children = []
+                        for i in range(nxtsz):
+                            entry.children.append(RouteEntry(0,0,-1))
+                else:
+                    # There's already an entry at this level
+                    # The if and else below are nearly identical, can be merged?
+                    if entry.final:
+                        if entry.prefix_len > length:
+                            # prefix length of entry is greatrer than input
+                            pass
+                        else:
+                            # ours is a longer prefix, update output index
+                            if length <= lvl_prelen:
+                                entry.output_idx = dest_idx
+                                entry.prefix_len = length
+                                entry.final = True
+                                entry.table_idx = idx_base + i
+                                entry.table_level = level
+                            else:
+                                if not entry.children:
+                                    entry.children = []
+                                    for i in range(nxtsz):
+                                        entry.children.append(RouteEntry(0,0,-1))
+                    else:
+                        if not entry.prefix_len > length:
+                            # That entry is not final - likely we'd someone inserted
+                            # longer prefix before
+                            assert entry.children is not None
+                        else:
+                            if length <= lvl_prelen:
+                                entry.output_idx = dest_idx
+                                entry.prefix_len = length
+                                entry.final = True
+                                entry.table_idx = idx_base + i
+                                entry.table_level = level
+                            else:
+                                if not entry.children:
+                                    entry.children = []
+                                    for i in range(nxtsz):
+                                        entry.children.append(RouteEntry(0,0,-1))
+
+                i += 1
+            if lvl_prelen >= length: # Break from outer loop
+                break
+            level += 1
+            tbl = entry.children
+
+    def _idx_from_tuple(self, prefix_arr, prelen, level):
+        _levels = [16, 24, 28, 32]
+        _level_edges = [(0,2),(2,3), (3,4), (3,4)]
+        begin, end = _level_edges[level]
+        leveloff = _levels[level]
+
+        if prelen > leveloff:
+            span = 1
+        else:
+            span = 1 << (leveloff - prelen)
+        prefix_arr = prefix_arr[begin:end][::-1]
+        idx = reduce(lambda x,y: x+ ((1 << (8*y[0])) * y[1]),
+                        enumerate(prefix_arr), 0)
+        if level >= 2:
+            idx = idx >> 4
+        return idx, span
+
+    def print_table(self):
+        for entry in self.level0_table:
+            if entry.output_idx != -1:
+                print entry
+
+
+r = RouteTable()
+print r._idx_from_tuple([12,0,0,0], 8, 0)
+print r._idx_from_tuple([12,1,0,0], 16, 0)
+print r._idx_from_tuple([12,1,132,0], 22, 0)
+
+r.add('12.0.0.0', 8, 2000)
+r.add('12.0.1.0', 24, 2001)
+r.add('12.0.2.16', 28, 2004)
+r.add('12.0.2.0', 24, 2005)
+r.add('12.1.128.0', 23, 2003)
+r.add('12.0.0.0', 16, 2002)
+
+r.add('212.85.129.0', 24, '134.222.85.45')
+r.add('210.51.225.0', 24, '193.251.245.6')
+r.add('209.136.89.0', 24, '12.0.1.63')
+r.add('209.34.243.0', 24, '12.0.1.63')
+
+r.add('202.209.199.0', 29, '203.181.248.233')
+r.add('202.209.199.0', 28, '203.181.248.233')
+r.add('202.209.199.48',29, '203.181.248.233')
+
+r.print_table()
