@@ -1,5 +1,14 @@
+#
+# Refer to LICENSE file and README file for licensing information.
+#
 """
 An implementation of IPv4 Routing table that does longest prefix match.
+
+This implementation is based on ideas from the following sources (though it is
+not an actual implementation of any of these ideas).
+Click Modular Router - RadixIPLookup Element
+(http://www.read.cs.ucla.edu/click/elements/radixiplookup)
+
 
 Broad scheme is as follows -
 
@@ -222,4 +231,3 @@ if __name__ == '__main__':
     r.add('202.209.199.0', 29, '203.181.248.232')
     r.add('202.209.199.0', 28, '203.181.248.231')
     r.print_table()
-

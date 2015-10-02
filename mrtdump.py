@@ -1,3 +1,6 @@
+#
+# Refer to LICENSE file and README file for licensing information.
+#
 """
 A python implementation of MRT file reader.
 

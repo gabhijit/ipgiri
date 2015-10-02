@@ -1,3 +1,6 @@
+#
+# Refer to LICENSE file and README file for licensing information.
+#
 from mrtdump import MRTDumper
 from asinformation import ASInformation
 from ipv4_routing_table import RouteTable

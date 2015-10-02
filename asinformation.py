@@ -1,3 +1,6 @@
+#
+# Refer to LICENSE file and README file for licensing information.
+#
 """
 A utility that parses AS information file and populates following information
  - AS Id

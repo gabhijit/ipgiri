@@ -1,3 +1,6 @@
+#
+# Refer to LICENSE file and README file for licensing information.
+#
 """
 Implementation of various MRT Types supported. Right now following types
 are supportd.
