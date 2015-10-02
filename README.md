@@ -7,4 +7,5 @@ A collection of python scripts to parse BGP data
  4. ipv4_route_table.py - A simple routing table implementation that supports longest prefix match 
  5. ip_to_country.py - Python scripts that puts all together 
 
-docs/ directory contains referred files
+Most of the data is available from http://data.caida.org/datasets/
+docs/ directory contains referred RFCs, files

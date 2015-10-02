@@ -4,6 +4,7 @@ A python implementation of MRT file reader.
 Format of the MRT file is described in rfc6396
 (http://tools.ietf.org/html/rfc6396)
 
+It's an implementation of mrtdump.pl (ADD URL HERE)
 Supports TABLE_DUMP (Type 12, Subtype 1) and TABLE_DUMP_V2 (Type 13, Subtype 2)
 """
 
