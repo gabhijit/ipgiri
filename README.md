@@ -9,3 +9,5 @@ A collection of python scripts to parse BGP data
 
 Most of the data is available from http://data.caida.org/datasets/
 docs/ directory contains referred RFCs, files
+
+This is not usable for Internet size Routing Table yet (A quick experiment suggested Memory Usage of about 100M for 10K entries, the number of routing table entries is about 585K, so this will not work as it is.)
