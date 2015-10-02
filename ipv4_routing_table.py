@@ -110,9 +110,10 @@ class RouteTable:
 
     def add(self, prefix, length, dest_idx):
         """ Adds a prefix to routing table."""
-        prefix_arr = [ord(x) for x in inet_aton(prefix)]
 
+        prefix_arr = [ord(x) for x in inet_aton(prefix)]
         level = 0
+        tbl = self.level0_table
         while level < len(self.levels):
             idx_base, span = self._idx_from_tuple(prefix_arr,
                                                     length, level)
@@ -122,9 +123,6 @@ class RouteTable:
             nxtsz = self.table_sizes[level+1] if level < 3 else 0
             i = 0
             while i < span:
-                if level == 0:
-                    tbl = self.level0_table
-
                 assert tbl is not None
                 entry = tbl[idx_base+i]
                 entry.table_idx = idx_base + i
@@ -145,6 +143,32 @@ class RouteTable:
                 break
             level += 1
             tbl = entry.children
+
+    def delete(self, prefix, length):
+        "Deletes an entry in the routing table."
+        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+        level = 0
+        tbl = self.level0_table
+        while level < len(self.levels):
+            idx_base, span = self._idx_from_tuple(prefix_arr,
+                                                    length, level)
+
+            lvl_prelen = self.levels[level]
+            tblsz = self.table_sizes[level]
+            nxtsz = self.table_sizes[level+1] if level < 3 else 0
+            i = 0
+            while i < span:
+                entry = tbl[idx_base+i]
+                if length <= lvl_prelen:
+                    entry.final = False
+                    entry.prefix_len = -1
+                    entry.output_idx = -1
+                else:
+                    tbl = entry.children
+                # FIXME : Add code to delete the entry.children
+                # if occupation of table is zero
+                i += 1
+            level += 1
 
     def _idx_from_tuple(self, prefix_arr, prelen, level):
         _levels = [16, 24, 28, 32]
@@ -170,24 +194,32 @@ class RouteTable:
             if len(repr(entry)):
                 print entry
 
-r = RouteTable()
+if __name__ == '__main__':
+    r = RouteTable()
 
-#r.add('12.0.0.0', 8, 2000)
-#r.add('12.0.1.0', 24, 2001)
-#r.add('12.0.2.16', 28, 2004)
-#r.add('12.0.2.0', 24, 2005)
-#r.add('12.1.128.0', 23, 2003)
-#r.add('12.0.0.0', 16, 2002)
+    #r.add('12.0.0.0', 8, 2000)
+    #r.add('12.0.1.0', 24, 2001)
+    #r.add('12.0.2.16', 28, 2004)
+    #r.add('12.0.2.0', 24, 2005)
+    #r.add('12.1.128.0', 23, 2003)
+    #r.add('12.0.0.0', 16, 2002)
 
-#r.add('212.85.129.0', 24, '134.222.85.45')
-#r.add('210.51.225.0', 24, '193.251.245.6')
-#r.add('209.136.89.0', 24, '12.0.1.63')
-#r.add('209.34.243.0', 24, '12.0.1.63')
+    #r.add('212.85.129.0', 24, '134.222.85.45')
+    #r.add('210.51.225.0', 24, '193.251.245.6')
+    #r.add('209.136.89.0', 24, '12.0.1.63')
+    #r.add('209.34.243.0', 24, '12.0.1.63')
 
-r.add('202.209.199.0', 24, '203.181.248.230')
-r.add('202.209.199.0', 28, '203.181.248.231')
-r.add('202.209.199.0', 29, '203.181.248.232')
-r.add('202.209.199.48',29, '203.181.248.233')
+    r.add('202.209.199.0', 24, '203.181.248.230')
+    r.add('202.209.199.0', 28, '203.181.248.231')
+    r.add('202.209.199.0', 29, '203.181.248.232')
+    r.add('202.209.199.48',29, '203.181.248.233')
+    r.print_table()
 
-r.print_table()
+    r.delete('202.209.199.0', 28)
+    r.delete('202.209.199.0', 29)
+    r.print_table()
+
+    r.add('202.209.199.0', 29, '203.181.248.232')
+    r.add('202.209.199.0', 28, '203.181.248.231')
+    r.print_table()
 

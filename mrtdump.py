@@ -4,7 +4,7 @@ A python implementation of MRT file reader.
 Format of the MRT file is described in rfc6396
 (http://tools.ietf.org/html/rfc6396)
 
-Supports TABLE_DUMP (Type 12) and TABLE_DUMP_V2 (Type 13)
+Supports TABLE_DUMP (Type 12, Subtype 1) and TABLE_DUMP_V2 (Type 13, Subtype 2)
 """
 
 import struct
@@ -16,7 +16,6 @@ from bz2 import BZ2File
 
 from mrttypes import read_mrt_entry
 from mrttypes import PeerIndexTable, RIBEntry
-
 
 
 MRTHeader = namedtuple('MRTHeader', ['ts', 'type', 'subtype', 'length'])
@@ -80,14 +79,14 @@ class MRTDumper(object):
         """
         return self._peeridx_tbl.get_peer_at_idx(idx)
 
-    def list_rib_entries(self, sort=False, etype=0):
+    def get_rib_entries(self, sort=False, etype=0):
         """Lists all the RIB Entries in the given file.
         parameters:
             sort: If true - prints in lexicographically sorted
             etype: 0 (prints all)
                    2 (prints IPV4 Unicast)
         """
-        pass
+        return self._rib_entries
 
     def _do_get_file_handle(self, cls, mrt_file):
         """Lower Level file open and error checking"""
@@ -116,14 +115,19 @@ class MRTDumper(object):
             string = string + " for file " + self._file_reader.name + "  "
         return "< MRTDumper for " + string + str(hex(id(self))) + ">"
 
+
 if __name__ == '__main__':
     #dumper = MRTDumper('updates.20150603.1000')
     #dumper = MRTDumper('rib.20150617.1600.bz2')
     dumper = MRTDumper('rib.20150617.1600')
 
+    # TODO : should this be parsed in MRTDumper class?
     for dump in dumper:
         if type(dump) == PeerIndexTable:
             dumper._peeridx_tbl = dump
         if type(dump) == RIBEntry:
             dumper._rib_entries.append(dump)
+    for rib_entry in dumper.get_rib_entries():
+        print get_prefix_length_dest_as(rib_entry)
+
     dumper.close()

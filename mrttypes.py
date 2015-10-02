@@ -178,6 +178,7 @@ class RIBEntry(MRTType):
             self._prefix = '\x00' * self._ENTRY_LENGTHS[etype]
             s, pl, en = struct.unpack(pestr, e[0:pestrl])
         self._entry_count = en
+        self._prefixstr = '.'.join([str(ord(x)) for x in self._prefix])
 
         used = pestrl
         for i in range(self._entry_count):
@@ -198,6 +199,11 @@ class RIBEntry(MRTType):
                                 (inet_ntoa(self._prefix), self._prefixlen)
             self._entries.append(attrs)
 
+    def get_prefix_length_dest_as(self):
+
+        dest_aspath = self._entries[0]['ASPATH']
+        dest_as = dest_aspath[-1]
+        return self._prefixstr, self._prefixlen, dest_as
     def __repr__(self):
         return '\n'.join([str(x) for x in self._entries])
 
@@ -213,4 +219,4 @@ def read_mrt_entry(m, e, o):
         return peeridxtbl
     if m.type == 13 and m.subtype == 2:
         rib_entry = RIBEntry(m, e, o, RIB_ENTRY_IPV4_UCAST)
-        print rib_entry
+        print rib_entry.get_prefix_length_dest_as()
