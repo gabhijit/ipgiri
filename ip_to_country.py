@@ -26,4 +26,5 @@ for dump in dumper:
         print count, prefix, length, asid, r.rtentries_alloced
         gc.collect()
 
+r.save_table('585kentries.table')
 print r.lookup('123.252.240.140')

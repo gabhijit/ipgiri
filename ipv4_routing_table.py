@@ -73,9 +73,8 @@ class RouteEntry:
     def __init__(self, pre_len, final, output_idx):
         """Prefix Length of this Entry. Whether this entry is final or not and
         output index for this entry (only valid if this entry is final)."""
-        #self.entry = struct.pack('>BBI', pre_len, final, output_idx)
-        #self.prefix_len = pre_len
-        #self.final = final
+        self.prefix_len = pre_len
+        self.final = final
         self.output_idx = output_idx
         self.children = None
         #self.table_idx = -1
@@ -85,31 +84,38 @@ class RouteEntry:
     #    """ Adds children to a given entry."""
     #    self.children = entry_table
 
-    #def __repr__(self):
+    def __repr__(self):
 
-    #    return ''
-    #    if self.children is None and self.output_idx == -1:
-    #        return ''
+        if self.children is None and self.output_idx == -1:
+            return ''
 
-        #s = '%stable_idx:%d,final:%r,output_idx:%s\n' % \
-                #("\t"*self.table_level, self.table_idx,
-                        #self.final, self.output_idx)
-        #s = 'final:%r, output_idx:%s' % (self.final, self.output_idx)
-        #if self.children is None:
-        #    return s
-        #for child in self.children:
-        #    s += repr(child)
-        #return s
+        s = '%stable_idx:%d,final:%r,output_idx:%s\n' % \
+                ("\t"*self.table_level, self.table_idx,
+                        self.final, self.output_idx)
+        s = 'final:%r, output_idx:%s' % (self.final, self.output_idx)
+        if self.children is None:
+            return s
+        for child in self.children:
+            s += repr(child)
+        return s
 
+# The class below is deprecated, but still is here for reference which depicts
+# basic structre. Numpy 'dtype' RouteEntryNP does exactly the same
 class RouteTable:
-    def __init__(self):
+    def __init__(self, filename=None):
         self.table_sizes = [ 1 << 16, 1 << 8, 1 << 4, 1 << 4]
         self.levels = [16, 24, 28, 32]
-        self.rtentries_alloced = 0
-        self.level0_table = np.zeros(self.table_sizes[0], RouteEntryNP)
+        if filename is None:
+            self.level0_table = np.zeros(self.table_sizes[0], RouteEntryNP)
+            self.rtentries_alloced = 0
+            self.rtentries_alloced += self.table_sizes[0]
+        else:
+            self._load_table(filename)
+            # FIXME : Get this right
+            self.rtentries_alloced = 0
+
         #for i in range(self.table_sizes[0]):
             #self.level0_table.append(RouteEntry(0,0,0))
-        self.rtentries_alloced += self.table_sizes[0]
 
     def lookup(self, ip_address):
         """ Looks up an IP address and returns an output Index"""
@@ -221,6 +227,17 @@ class RouteTable:
         for i, entry in enumerate(self.level0_table):
             self.print_entry(entry, i, 0)
 
+    def save_table(self, filename):
+        allocced = np.zeros(1, '>u4')
+        allocced[0] = self.rtentries_alloced
+        with open(filename, 'wb+') as f:
+            np.savez(f, allocced=allocced, tbl0=self.level0_table)
+
+    def _load_table(self, filename):
+        x = np.load(filename)
+        self.level0_table = x['tbl0']
+        self.rtentries_alloced = x['allocced'][0]
+
 if __name__ == '__main__':
     r = RouteTable()
 
@@ -253,3 +270,9 @@ if __name__ == '__main__':
     r.add('202.209.199.8', 29, 232)
     r.add('202.209.199.0', 28, 231)
     r.print_table()
+
+    r.save_table('rttable.now')
+
+    print "****************************"
+    r2 = RouteTable('rttable.now')
+    r2.print_table()
