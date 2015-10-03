@@ -63,43 +63,53 @@ we'd not overwrite the entry
 """
 
 from socket import inet_aton
+import struct
+import numpy as np
+
+RouteEntryNP = np.dtype([('final', 'u1'), ('prefix_len', 'u1'),
+                            ('output_idx', '>u4'), ('children', 'O')])
 
 class RouteEntry:
     def __init__(self, pre_len, final, output_idx):
         """Prefix Length of this Entry. Whether this entry is final or not and
         output index for this entry (only valid if this entry is final)."""
-        self.prefix_len = pre_len
-        self.final = final
+        #self.entry = struct.pack('>BBI', pre_len, final, output_idx)
+        #self.prefix_len = pre_len
+        #self.final = final
         self.output_idx = output_idx
         self.children = None
-        self.table_idx = -1
-        self.table_level = -1
+        #self.table_idx = -1
+        #self.table_level = -1
 
-    def add_childrens(self, entry_table):
-        """ Adds children to a given entry."""
-        self.children = entry_table
+    #def add_childrens(self, entry_table):
+    #    """ Adds children to a given entry."""
+    #    self.children = entry_table
 
-    def __repr__(self):
+    #def __repr__(self):
 
-        if self.children is None and self.output_idx == -1:
-            return ''
+    #    return ''
+    #    if self.children is None and self.output_idx == -1:
+    #        return ''
 
-        s = '%stable_idx:%d,final:%r,output_idx:%s\n' % \
-                ("\t"*self.table_level, self.table_idx,
-                        self.final, self.output_idx)
-        if self.children is None:
-            return s
-        for child in self.children:
-            s += repr(child)
-        return s
+        #s = '%stable_idx:%d,final:%r,output_idx:%s\n' % \
+                #("\t"*self.table_level, self.table_idx,
+                        #self.final, self.output_idx)
+        #s = 'final:%r, output_idx:%s' % (self.final, self.output_idx)
+        #if self.children is None:
+        #    return s
+        #for child in self.children:
+        #    s += repr(child)
+        #return s
 
 class RouteTable:
     def __init__(self):
         self.table_sizes = [ 1 << 16, 1 << 8, 1 << 4, 1 << 4]
         self.levels = [16, 24, 28, 32]
-        self.level0_table = []
-        for i in range(self.table_sizes[0]):
-            self.level0_table.append(RouteEntry(0,0,-1))
+        self.rtentries_alloced = 0
+        self.level0_table = np.zeros(self.table_sizes[0], RouteEntryNP)
+        #for i in range(self.table_sizes[0]):
+            #self.level0_table.append(RouteEntry(0,0,0))
+        self.rtentries_alloced += self.table_sizes[0]
 
     def lookup(self, ip_address):
         """ Looks up an IP address and returns an output Index"""
@@ -109,10 +119,10 @@ class RouteTable:
         for i, level in enumerate(self.levels):
             idx, _ = self._idx_from_tuple(ip_arr, 32, i)
             entry = tbl[idx]
-            if entry.final:
-                match = entry.output_idx
-            if entry.children is not None:
-                tbl = entry.children
+            if entry['final'] == 1:
+                match = entry['output_idx']
+            if entry['children'] != 0:
+                tbl = entry['children']
             else:
                 break
         return match
@@ -134,24 +144,24 @@ class RouteTable:
             while i < span:
                 assert tbl is not None
                 entry = tbl[idx_base+i]
-                entry.table_idx = idx_base + i
-                entry.table_level = level
+                #entry.table_idx = idx_base + i
+                #entry.table_level = level
                 if length <= lvl_prelen:
-                    entry.final = True
-                    entry.prefix_len = length
-                    entry.output_idx = dest_idx
+                    #entry.entry = struct.pack('>BBI', True, length, dest_idx)
+                    entry['final'] = 1
+                    entry['prefix_len'] = length
+                    entry['output_idx'] = dest_idx
                 else:
-                    if entry.children is not None:
+                    if entry['children'] != 0:
                         break
-                    tbl = []
-                    for i in range(nxtsz):
-                        tbl.append(RouteEntry(0,0,-1))
-                    entry.children = tbl
+                    tbl = np.zeros(nxtsz, RouteEntryNP)
+                    self.rtentries_alloced += nxtsz
+                    entry['children'] = tbl
                 i += 1
             if lvl_prelen >= length: # Break from outer loop
                 break
             level += 1
-            tbl = entry.children
+            tbl = entry['children']
 
     def delete(self, prefix, length):
         "Deletes an entry in the routing table."
@@ -169,11 +179,12 @@ class RouteTable:
             while i < span:
                 entry = tbl[idx_base+i]
                 if length <= lvl_prelen:
-                    entry.final = False
-                    entry.prefix_len = -1
-                    entry.output_idx = -1
+                    #entry.entry = struct.pack('>BBI', False, 0, 0)
+                    entry['final'] = 0
+                    entry['prefix_len'] = 0
+                    entry['output_idx'] = 0
                 else:
-                    tbl = entry.children
+                    tbl = entry['children']
                 # FIXME : Add code to delete the entry.children
                 # if occupation of table is zero
                 i += 1
@@ -198,10 +209,17 @@ class RouteTable:
             idx = idx & 0x0F
         return idx, span
 
+    def print_entry(self, entry, tblidx, level):
+        if entry['output_idx'] != 0 or entry['children'] != 0:
+            print "%sidx:%d,final:%d,output:%d" % \
+                    ('\t'*level, tblidx, entry['final'], entry['output_idx'])
+            if entry['children'] != 0:
+                for i, entry2 in enumerate(entry['children']):
+                    self.print_entry(entry2, i, level+1)
+
     def print_table(self):
-        for entry in self.level0_table:
-            if len(repr(entry)):
-                print entry
+        for i, entry in enumerate(self.level0_table):
+            self.print_entry(entry, i, 0)
 
 if __name__ == '__main__':
     r = RouteTable()
@@ -218,16 +236,20 @@ if __name__ == '__main__':
     #r.add('209.136.89.0', 24, '12.0.1.63')
     #r.add('209.34.243.0', 24, '12.0.1.63')
 
-    r.add('202.209.199.0', 24, '203.181.248.230')
-    r.add('202.209.199.0', 28, '203.181.248.231')
-    r.add('202.209.199.0', 29, '203.181.248.232')
-    r.add('202.209.199.48',29, '203.181.248.233')
+    r.add('202.209.199.0', 24, 230)
+    r.add('202.209.199.0', 28, 231)
+    r.add('202.209.199.8', 29, 232)
+    r.add('202.209.199.48',29, 233)
     r.print_table()
+    print r.lookup('202.209.199.49')
+    print r.lookup('202.209.199.8')
+    print r.lookup('202.209.199.9')
+    print r.lookup('202.209.199.7')
 
     r.delete('202.209.199.0', 28)
-    r.delete('202.209.199.0', 29)
+    r.delete('202.209.199.8', 29)
     r.print_table()
 
-    r.add('202.209.199.0', 29, '203.181.248.232')
-    r.add('202.209.199.0', 28, '203.181.248.231')
+    r.add('202.209.199.8', 29, 232)
+    r.add('202.209.199.0', 28, 231)
     r.print_table()

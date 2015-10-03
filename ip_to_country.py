@@ -1,6 +1,8 @@
 #
 # Refer to LICENSE file and README file for licensing information.
 #
+import gc
+
 from mrtdump import MRTDumper
 from asinformation import ASInformation
 from ipv4_routing_table import RouteTable
@@ -21,4 +23,7 @@ for dump in dumper:
         #dumper._rib_entries.append(dump)
     count += 1
     if count % 1000 == 0:
-        print count, prefix, length, asid
+        print count, prefix, length, asid, r.rtentries_alloced
+        gc.collect()
+
+print r.lookup('123.252.240.140')
