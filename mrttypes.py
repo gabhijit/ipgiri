@@ -10,6 +10,7 @@ from collections import namedtuple
 import struct
 from socket import inet_ntoa
 import gc
+import binascii
 
 #BGP Path ATypes
 BGP_ATYPE_ORIGIN = 1
@@ -121,7 +122,7 @@ class PeerIndexTable(MRTType):
 
         # o is now @ the beginning of first entry
         for i in range(self._nentries):
-            ebyte = struct.unpack('B', e[o])[0]
+            ebyte = struct.unpack('B', e[o:o+1])[0]
             estr = self._PEER_IDX_TBL_ENTRYSTRS[ebyte]
             estrlen = struct.calcsize(estr)
             entry = MRTPeerIndexEntry(*struct.unpack(estr, e[o:o+estrlen]))
@@ -131,7 +132,7 @@ class PeerIndexTable(MRTType):
 
     def _entry_print(self, entry):
         print (f"TYPE:{entry.entry_type}, Peer_BGP_ID:{entry.peer_bgp_id}, "
-                "Peer_IP:inet_ntoa(entry.peer_ip)},Peer_AS:AS{entry.peer_asid}")
+                f"Peer_IP:{inet_ntoa(entry.peer_ip)},Peer_AS:AS{entry.peer_asid}")
 
     def get_peer_at_idx(self, idx):
         """Returns the peer @ given idx."""
@@ -166,13 +167,12 @@ class RIBEntry(MRTType):
         pb = 0
         if p % 8:
             pb = 1
-        pb += (p/8)
+        pb += (p//8)
         if pb:
             pestr = self._SEQNO_PREFIX_STR + '%dsH' % pb
             pestrl = struct.calcsize(pestr)
-            #print bytes_to_hexstr(e[0:pestrl])
             s, pl, pr, en = struct.unpack(pestr, e[0:pestrl])
-            self._prefix = pr + ('\x00' * (self._ENTRY_LENGTHS[etype] - pb))
+            self._prefix = pr + bytes(self._ENTRY_LENGTHS[etype] - pb)
         else:
             pestr = self._SEQNO_PREFIX_STR + 'H'
             pestrl = struct.calcsize(pestr)
@@ -180,7 +180,7 @@ class RIBEntry(MRTType):
             self._prefix = '\x00' * self._ENTRY_LENGTHS[etype]
             s, pl, en = struct.unpack(pestr, e[0:pestrl])
         self._entry_count = en
-        self._prefixstr = '.'.join([str(ord(x)) for x in self._prefix])
+        self._prefixstr = '.'.join([str(x) for x in self._prefix])
 
         used = pestrl
         for i in range(self._entry_count):
@@ -197,8 +197,11 @@ class RIBEntry(MRTType):
             peer = self.owner.get_peer_by_idx(peeridx)
             attrs['PEER_IP'] = inet_ntoa(peer.peer_ip)
             attrs['PEER_AS'] = peer.peer_asid
-            attrs['PREFIX'] = '%s/%d' % \
+            if self._prefixlen > 0 :
+                attrs['PREFIX'] = '%s/%d' % \
                                 (inet_ntoa(self._prefix), self._prefixlen)
+            else:
+                attrs['PREFIX'] = "0/0"
             self._entries.append(attrs)
 
     def get_prefix_length_dest_as(self):

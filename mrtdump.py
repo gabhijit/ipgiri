@@ -62,7 +62,7 @@ class MRTDumper(object):
         """ Iterator for the class"""
         return self
 
-    def next(self):
+    def __next__(self):
 
         if not self._file_reader:
             raise StopIteration
@@ -122,11 +122,12 @@ class MRTDumper(object):
 
 if __name__ == '__main__':
     #dumper = MRTDumper('updates.20150603.1000')
-    #dumper = MRTDumper('rib.20150617.1600.bz2')
-    dumper = MRTDumper('rib.20150617.1600')
+    dumper = MRTDumper('rib.20230626.0400.bz2')
+    #dumper = MRTDumper('rib.20150617.1600')
 
     # TODO : should this be parsed in MRTDumper class?
     for dump in dumper:
+        print(dump)
         if type(dump) == PeerIndexTable:
             dumper._peeridx_tbl = dump
         if type(dump) == RIBEntry:

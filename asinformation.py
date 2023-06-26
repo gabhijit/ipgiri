@@ -63,7 +63,7 @@ class ASInformation:
         """parse format 1 lines and update orgs dict"""
         toks = line.strip().split('|')
         if len(toks) != 5:
-            print 'invalid line:', line
+            print (f"invalid line: {line}")
             return
 
         org, _, _, country, _ = toks
@@ -75,7 +75,7 @@ class ASInformation:
         """parse format 2 lines and update ases and countries dicts"""
         toks = line.strip().split('|')
         if len(toks) != 5:
-            print 'invalid line:', line
+            print (f"invalid line: {line}")
             return
 
         asid, _,asname, org, _ = toks
@@ -117,8 +117,8 @@ if __name__ == '__main__':
     countries_by_num_ases = OrderedDict(sorted(cdict.items(),
                                                 key=lambda x: len(x[1]), reverse=True))
     for country in countries_by_num_ases:
-        print country, (a.get_ases_for_country(country))
+        print(country, (a.get_ases_for_country(country)))
 
-    print a.country_from_asid(37614)
+    print(a.country_from_asid(37614))
     for as_ in a.get_ases_for_country('IN'):
         pass #print a.get_as_info(as_)
