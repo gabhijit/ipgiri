@@ -130,9 +130,8 @@ class PeerIndexTable(MRTType):
             self._entry_print(entry)
 
     def _entry_print(self, entry):
-        print 'TYPE:%d,Peer_BGP_ID:%d,Peer_IP:%s,Peer_AS:AS%d' % \
-                (entry.entry_type, entry.peer_bgp_id,
-                    inet_ntoa(entry.peer_ip), entry.peer_asid)
+        print (f"TYPE:{entry.entry_type}, Peer_BGP_ID:{entry.peer_bgp_id}, "
+                "Peer_IP:inet_ntoa(entry.peer_ip)},Peer_AS:AS{entry.peer_asid}")
 
     def get_peer_at_idx(self, idx):
         """Returns the peer @ given idx."""

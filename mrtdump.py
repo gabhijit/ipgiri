@@ -99,7 +99,7 @@ class MRTDumper(object):
         m = MRTHeader(*struct.unpack(_MRT_HDR_PACKSTR, x))
         if m.type not in _KNOWN_MRT_TYPES:
             f.close()
-            raise InvalidMRTFileErr, mrt_file
+            raise InvalidMRTFileErr(f'{mrt_file}')
         f.seek(0)
         return f
 
