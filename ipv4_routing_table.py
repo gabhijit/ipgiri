@@ -65,9 +65,12 @@ we'd not overwrite the entry
 from socket import inet_aton
 import struct
 import numpy as np
+import functools
 
 RouteEntryNP = np.dtype([('final', 'u1'), ('prefix_len', 'u1'),
                             ('output_idx', '>u4'), ('children', 'O')])
+
+empty_entry = np.zeros(1, RouteEntryNP)
 
 class RouteEntry:
     def __init__(self, pre_len, final, output_idx):
@@ -119,7 +122,7 @@ class RouteTable:
 
     def lookup(self, ip_address):
         """ Looks up an IP address and returns an output Index"""
-        ip_arr = [ord(x) for x in inet_aton(ip_address)]
+        ip_arr = [x for x in inet_aton(ip_address)]
         match = None
         tbl = self.level0_table
         for i, level in enumerate(self.levels):
@@ -127,7 +130,10 @@ class RouteTable:
             entry = tbl[idx]
             if entry['final'] == 1:
                 match = entry['output_idx']
-            if entry['children'] != 0:
+            try:
+                if entry['children'] != 0:
+                    tbl = entry['children']
+            except:
                 tbl = entry['children']
             else:
                 break
@@ -136,7 +142,7 @@ class RouteTable:
     def add(self, prefix, length, dest_idx):
         """ Adds a prefix to routing table."""
 
-        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+        prefix_arr = [x for x in inet_aton(prefix)]
         level = 0
         tbl = self.level0_table
         while level < len(self.levels):
@@ -158,7 +164,10 @@ class RouteTable:
                     entry['prefix_len'] = length
                     entry['output_idx'] = dest_idx
                 else:
-                    if entry['children'] != 0:
+                    try:
+                        if entry['children'] != 0:
+                            break
+                    except:
                         break
                     tbl = np.zeros(nxtsz, RouteEntryNP)
                     self.rtentries_alloced += nxtsz
@@ -171,7 +180,7 @@ class RouteTable:
 
     def delete(self, prefix, length):
         "Deletes an entry in the routing table."
-        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+        prefix_arr = [x for x in inet_aton(prefix)]
         level = 0
         tbl = self.level0_table
         while level < len(self.levels):
@@ -207,7 +216,7 @@ class RouteTable:
         else:
             span = 1 << (leveloff - prelen)
         prefix_arr = prefix_arr[begin:end][::-1]
-        idx = reduce(lambda x,y: x+ ((1 << (8*y[0])) * y[1]),
+        idx = functools.reduce(lambda x,y: x + ((1 << (8*y[0])) * y[1]),
                         enumerate(prefix_arr), 0)
         if level == 2:
             idx = idx >> 4
@@ -216,10 +225,14 @@ class RouteTable:
         return idx, span
 
     def print_entry(self, entry, tblidx, level):
-        if entry['output_idx'] != 0 or entry['children'] != 0:
-            print "%sidx:%d,final:%d,output:%d" % \
-                    ('\t'*level, tblidx, entry['final'], entry['output_idx'])
-            if entry['children'] != 0:
+        try:
+            has_children = entry['chilren'] != 0
+        except:
+            has_children = False
+        if entry['output_idx'] != 0 or  has_children:
+            print("%sidx:%d,final:%d,output:%d" % \
+                    ('\t'*level, tblidx, entry['final'], entry['output_idx']))
+            if has_children:
                 for i, entry2 in enumerate(entry['children']):
                     self.print_entry(entry2, i, level+1)
 
@@ -254,25 +267,29 @@ if __name__ == '__main__':
     #r.add('209.34.243.0', 24, '12.0.1.63')
 
     r.add('202.209.199.0', 24, 230)
-    r.add('202.209.199.0', 28, 231)
+    #r.add('202.209.199.0', 28, 231)
     r.add('202.209.199.8', 29, 232)
     r.add('202.209.199.48',29, 233)
     r.print_table()
-    print r.lookup('202.209.199.49')
-    print r.lookup('202.209.199.8')
-    print r.lookup('202.209.199.9')
-    print r.lookup('202.209.199.7')
+    print(r.lookup('202.209.199.49'))
+    print(r.lookup('202.209.199.8'))
+    print(r.lookup('202.209.199.9'))
+    print(r.lookup('202.209.199.7'))
 
     r.delete('202.209.199.0', 28)
     r.delete('202.209.199.8', 29)
     r.print_table()
+    print(r.lookup('202.209.199.49'))
+    print(r.lookup('202.209.199.8'))
+    print(r.lookup('202.209.199.9'))
+    print(r.lookup('202.209.199.7'))
 
     r.add('202.209.199.8', 29, 232)
     r.add('202.209.199.0', 28, 231)
     r.print_table()
 
-    r.save_table('rttable.now')
+    #r.save_table('rttable.now')
 
-    print "****************************"
-    r2 = RouteTable('rttable.now')
-    r2.print_table()
+    #print("****************************")
+    #r2 = RouteTable('rttable.now')
+    #r2.print_table()
