@@ -228,11 +228,12 @@ class RouteTable:
         try:
             has_children = entry['chilren'] != 0
         except:
-            has_children = False
-        if entry['output_idx'] != 0 or  has_children:
+            has_children = True
+        if entry['output_idx'] != 0 or has_children:
             print("%sidx:%d,final:%d,output:%d" % \
                     ('\t'*level, tblidx, entry['final'], entry['output_idx']))
             if has_children:
+                print(entry['children'])
                 for i, entry2 in enumerate(entry['children']):
                     self.print_entry(entry2, i, level+1)
 
@@ -267,7 +268,7 @@ if __name__ == '__main__':
     #r.add('209.34.243.0', 24, '12.0.1.63')
 
     r.add('202.209.199.0', 24, 230)
-    #r.add('202.209.199.0', 28, 231)
+    r.add('202.209.199.0', 28, 231)
     r.add('202.209.199.8', 29, 232)
     r.add('202.209.199.48',29, 233)
     r.print_table()
