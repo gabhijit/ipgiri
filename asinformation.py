@@ -14,6 +14,7 @@ Also keeps other data handy
 
 import os
 from collections import namedtuple
+from gzip import GzipFile
 
 asinfo = namedtuple('asinfo', ['id', 'name', 'org', 'country'])
 
@@ -46,11 +47,11 @@ class ASInformation:
         _format1_found = False
         _format2_found = False
         for line in f:
-            if line.startswith("# format:org_id"):
+            if line.startswith(b"# format:org_id"):
                 _format1_found = True
                 _format2_found = False
                 continue
-            if line.startswith("# format:aut"):
+            if line.startswith(b"# format:aut"):
                 _format2_found = True
                 _format1_found = False
                 continue
@@ -61,7 +62,7 @@ class ASInformation:
 
     def _do_parse_format1(self, line):
         """parse format 1 lines and update orgs dict"""
-        toks = line.strip().split('|')
+        toks = line.strip().split(b'|')
         if len(toks) != 5:
             print (f"invalid line: {line}")
             return
@@ -73,12 +74,12 @@ class ASInformation:
 
     def _do_parse_format2(self, line):
         """parse format 2 lines and update ases and countries dicts"""
-        toks = line.strip().split('|')
-        if len(toks) != 5:
+        toks = line.strip().split(b'|')
+        if len(toks) != 6:
             print (f"invalid line: {line}")
             return
 
-        asid, _,asname, org, _ = toks
+        asid, _,asname, org, _, _ = toks
         country = self._orgs[org]
         info = asinfo(*[int(asid), asname, org, country])
         self._ases[int(asid)] = info
@@ -101,16 +102,16 @@ class ASInformation:
         return self._countries.get(country)
 
     def country_from_asid(self, asid):
-        return self._ases.get(asid).country if self._ases.has_key(asid) \
+        return self._ases.get(asid).country if asid in self._ases \
                 else None
 
     def get_as_info(self, asid):
-        return self._ases.get(asid) if self._ases.has_key(asid) else None
+        return self._ases.get(asid) if asid in self._ases else None
 
 if __name__ == '__main__':
 
     from collections import OrderedDict
-    a = ASInformation('20150701.as-org2info.txt')
+    a = ASInformation("20230701.as-org2info.txt.gz")
     a.parse()
 
     cdict = a.get_countries()
@@ -120,5 +121,5 @@ if __name__ == '__main__':
         print(country, (a.get_ases_for_country(country)))
 
     print(a.country_from_asid(37614))
-    for as_ in a.get_ases_for_country('IN'):
-        pass #print a.get_as_info(as_)
+    for as_ in a.get_ases_for_country(b'IN'):
+        print(a.get_as_info(as_))

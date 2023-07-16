@@ -142,7 +142,9 @@ class RouteTable:
     def add(self, prefix, length, dest_idx):
         """ Adds a prefix to routing table."""
 
+        #print(f"prefix: {prefix}, length: {length}")
         prefix_arr = [x for x in inet_aton(prefix)]
+        #print(f"prefix_arr: {prefix_arr}")
         level = 0
         tbl = self.level0_table
         while level < len(self.levels):
@@ -172,6 +174,7 @@ class RouteTable:
                     tbl = np.zeros(nxtsz, RouteEntryNP)
                     self.rtentries_alloced += nxtsz
                     entry['children'] = tbl
+                #print(f"entry:{entry}, idx_base: {idx_base}, i: {i}")
                 i += 1
             if lvl_prelen >= length: # Break from outer loop
                 break
@@ -211,6 +214,9 @@ class RouteTable:
         begin, end = _level_edges[level]
         leveloff = _levels[level]
 
+        # TODO: Make sure pre_arr respects prefix length
+        # For example r.add('12.128.0.0/8') should really not care about the
+        # second octet
         if prelen > leveloff:
             span = 1
         else:
@@ -218,6 +224,15 @@ class RouteTable:
         prefix_arr = prefix_arr[begin:end][::-1]
         idx = functools.reduce(lambda x,y: x + ((1 << (8*y[0])) * y[1]),
                         enumerate(prefix_arr), 0)
+        #print(f"prefix_arr: {prefix_arr}, "\
+                #f"prefix_length: {prelen}, level: {level}")
+        x = 0
+        for a,b in enumerate(prefix_arr):
+            #print(f"x : {x}, a: {a}, b : {b}")
+            c = (1 << (8*a)) * b
+            x = x + c
+        #print(f"idx: {idx}, x: {x}, "\
+                #f"prefix_length: {prelen}, span: {span}")
         if level == 2:
             idx = idx >> 4
         if level == 3:
@@ -228,12 +243,11 @@ class RouteTable:
         try:
             has_children = entry['chilren'] != 0
         except:
-            has_children = True
+            has_children = False
         if entry['output_idx'] != 0 or has_children:
             print("%sidx:%d,final:%d,output:%d" % \
                     ('\t'*level, tblidx, entry['final'], entry['output_idx']))
             if has_children:
-                print(entry['children'])
                 for i, entry2 in enumerate(entry['children']):
                     self.print_entry(entry2, i, level+1)
 
@@ -255,7 +269,11 @@ class RouteTable:
 if __name__ == '__main__':
     r = RouteTable()
 
-    #r.add('12.0.0.0', 8, 2000)
+    r.add('12.128.0.0', 8, 2000)
+    #r.add('12.128.0.0', 9, 2001)
+
+    print("lookup: 12.0.1.1", r.lookup('12.0.1.1'))
+    print("lookup: 12.129.1.1", r.lookup('12.129.1.1'))
     #r.add('12.0.1.0', 24, 2001)
     #r.add('12.0.2.16', 28, 2004)
     #r.add('12.0.2.0', 24, 2005)
@@ -267,27 +285,27 @@ if __name__ == '__main__':
     #r.add('209.136.89.0', 24, '12.0.1.63')
     #r.add('209.34.243.0', 24, '12.0.1.63')
 
-    r.add('202.209.199.0', 24, 230)
-    r.add('202.209.199.0', 28, 231)
-    r.add('202.209.199.8', 29, 232)
-    r.add('202.209.199.48',29, 233)
-    r.print_table()
-    print(r.lookup('202.209.199.49'))
-    print(r.lookup('202.209.199.8'))
-    print(r.lookup('202.209.199.9'))
-    print(r.lookup('202.209.199.7'))
+    #r.add('202.209.199.0', 24, 230)
+    #r.add('202.209.199.0', 28, 231)
+    #r.add('202.209.199.8', 29, 232)
+    #r.add('202.209.199.48',29, 233)
+    #r.print_table()
+    #print(r.lookup('202.209.199.49'))
+    #print(r.lookup('202.209.199.8'))
+    #print(r.lookup('202.209.199.9'))
+    #print(r.lookup('202.209.199.7'))
 
-    r.delete('202.209.199.0', 28)
-    r.delete('202.209.199.8', 29)
-    r.print_table()
-    print(r.lookup('202.209.199.49'))
-    print(r.lookup('202.209.199.8'))
-    print(r.lookup('202.209.199.9'))
-    print(r.lookup('202.209.199.7'))
+    #r.delete('202.209.199.0', 28)
+    #r.delete('202.209.199.8', 29)
+    #r.print_table()
+    #print(r.lookup('202.209.199.49'))
+    #print(r.lookup('202.209.199.8'))
+    #print(r.lookup('202.209.199.9'))
+    #print(r.lookup('202.209.199.7'))
 
-    r.add('202.209.199.8', 29, 232)
-    r.add('202.209.199.0', 28, 231)
-    r.print_table()
+    #r.add('202.209.199.8', 29, 232)
+    #r.add('202.209.199.0', 28, 231)
+    #r.print_table()
 
     #r.save_table('rttable.now')
 

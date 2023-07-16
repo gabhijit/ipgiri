@@ -8,7 +8,7 @@ from asinformation import ASInformation
 from ipv4_routing_table import RouteTable
 from mrttypes import PeerIndexTable, RIBEntry
 
-a = ASInformation('20150701.as-org2info.txt')
+a = ASInformation('20230701.as-org2info.txt.gz')
 r = RouteTable()
 dumper = MRTDumper('rib.20230626.0400.bz2')
 
@@ -18,7 +18,8 @@ for dump in dumper:
         dumper._peeridx_tbl = dump
     if type(dump) == RIBEntry:
         prefix, length, asid =  dump.get_prefix_length_dest_as()
-        r.add(prefix, length, asid)
+        if length > 0:
+            r.add(prefix, length, asid)
         #r.print_table()
         #dumper._rib_entries.append(dump)
     count += 1
