@@ -241,9 +241,9 @@ class RouteTable:
 
     def print_entry(self, entry, tblidx, level):
         try:
-            has_children = entry['chilren'] != 0
-        except:
-            has_children = False
+            has_children = entry['children'] != 0
+        except Exception as e:
+            has_children = True
         if entry['output_idx'] != 0 or has_children:
             print("%sidx:%d,final:%d,output:%d" % \
                     ('\t'*level, tblidx, entry['final'], entry['output_idx']))
@@ -269,11 +269,15 @@ class RouteTable:
 if __name__ == '__main__':
     r = RouteTable()
 
-    r.add('12.128.0.0', 8, 2000)
-    #r.add('12.128.0.0', 9, 2001)
+    r.add('12.0.0.0', 8, 2000)
+    r.add('12.128.0.0', 9, 2001)
+    r.add("12.127.10.0", 26, 2002)
+
+    r.print_table()
 
     print("lookup: 12.0.1.1", r.lookup('12.0.1.1'))
     print("lookup: 12.129.1.1", r.lookup('12.129.1.1'))
+    print("lookup: 12.127.10.1", r.lookup('12.127.10.1'))
     #r.add('12.0.1.0', 24, 2001)
     #r.add('12.0.2.16', 28, 2004)
     #r.add('12.0.2.0', 24, 2005)
