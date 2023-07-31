@@ -226,5 +226,4 @@ def read_mrt_entry(m, e, o):
         rib_entry = RIBEntry(m, e, o, RIB_ENTRY_IPV4_UCAST)
         #print rib_entry.get_prefix_length_dest_as()
         # Not sure why explicit gc.collect() below is required
-        gc.collect()
         return rib_entry
