@@ -13,6 +13,7 @@ r = RouteTable()
 dumper = MRTDumper('rib.20230626.0400.bz2')
 
 count = 0
+add_then = dt.now()
 for dump in dumper:
     if type(dump) == PeerIndexTable:
         dumper._peeridx_tbl = dump
@@ -20,13 +21,13 @@ for dump in dumper:
         prefix, length, asid =  dump.get_prefix_length_dest_as()
         if length > 0:
             r.add(prefix, length, asid)
-        #r.print_table()
-        #dumper._rib_entries.append(dump)
     count += 1
     if count % 1000 == 0:
-        print(count, prefix, length, asid, r.rtentries_alloced)
+        pass #print(count, prefix, length, asid, r.rtentries_alloced)
 
-r.save_table('585kentries.table')
+add_now = dt.now()
+print(f"Time Taken to insert {count} entries {add_now - add_then}")
+
 print(r.lookup('123.252.240.140'))
 
 
@@ -1031,9 +1032,10 @@ ip_addresses = """231.231.100.42
 77.175.181.138
 42.249.255.211"""
 
+ips =  map(lambda x: x.strip(), ip_addresses.split())
 then = dt.now()
-for ip in ip_addresses.split():
-    print(r.lookup(ip.strip()))
+for ip in ips:
+    r.lookup(ip.strip())
 now = dt.now()
 
 print(now-then)
