@@ -54,6 +54,7 @@ we'd not overwrite the entry
 """
 
 from socket import inet_aton
+import functools
 
 class RouteEntry:
     def __init__(self, pre_len, final, output_idx):
@@ -94,7 +95,7 @@ class RouteTable:
 
     def lookup(self, ip_address):
         """ Looks up an IP address and returns an output Index"""
-        ip_arr = [ord(x) for x in inet_aton(ip_address)]
+        ip_arr = [x for x in inet_aton(ip_address)]
         match = None
         tbl = self.level0_table
         for i, level in enumerate(self.levels):
@@ -111,7 +112,7 @@ class RouteTable:
     def add(self, prefix, length, dest_idx):
         """ Adds a prefix to routing table."""
 
-        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+        prefix_arr = [x for x in inet_aton(prefix)]
         level = 0
         tbl = self.level0_table
         while level < len(self.levels):
@@ -146,7 +147,7 @@ class RouteTable:
 
     def delete(self, prefix, length):
         "Deletes an entry in the routing table."
-        prefix_arr = [ord(x) for x in inet_aton(prefix)]
+        prefix_arr = [x for x in inet_aton(prefix)]
         level = 0
         tbl = self.level0_table
         while level < len(self.levels):
@@ -181,7 +182,7 @@ class RouteTable:
         else:
             span = 1 << (leveloff - prelen)
         prefix_arr = prefix_arr[begin:end][::-1]
-        idx = reduce(lambda x,y: x+ ((1 << (8*y[0])) * y[1]),
+        idx = functools.reduce(lambda x,y: x+ ((1 << (8*y[0])) * y[1]),
                         enumerate(prefix_arr), 0)
         if level == 2:
             idx = idx >> 4
@@ -192,7 +193,7 @@ class RouteTable:
     def print_table(self):
         for entry in self.level0_table:
             if len(repr(entry)):
-                print entry
+                print(entry)
 
 if __name__ == '__main__':
     r = RouteTable()

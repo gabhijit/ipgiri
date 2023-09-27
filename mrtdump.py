@@ -58,7 +58,7 @@ class MRTDumper(object):
         """ Iterator for the class"""
         return self
 
-    def next(self):
+    def __next__(self):
 
         if not self._file_reader:
             raise StopIteration
@@ -95,7 +95,7 @@ class MRTDumper(object):
         m = MRTHeader(*struct.unpack(_MRT_HDR_PACKSTR, x))
         if m.type not in _KNOWN_MRT_TYPES:
             f.close()
-            raise InvalidMRTFileErr, mrt_file
+            raise InvalidMRTFileErr(f"{mrt_file}")
         f.seek(0)
         return f
 
@@ -128,6 +128,6 @@ if __name__ == '__main__':
         if type(dump) == RIBEntry:
             dumper._rib_entries.append(dump)
     for rib_entry in dumper.get_rib_entries():
-        print get_prefix_length_dest_as(rib_entry)
+        pass #print(get_prefix_length_dest_as(rib_entry))
 
     dumper.close()
